@@ -1,5 +1,5 @@
 * text=auto
-.gitignore eol=lf
+
 *.rs eol=lf
 *.sh eol=lf
 

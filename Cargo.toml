@@ -1,0 +1,11 @@
+[package]
+name = "crydataget"
+version = "0.1.0"
+authors = ["Steve Roudebush <roudy@umich.edu>"]
+
+[dependencies]
+serde = "1.0.66"
+serde_json = "1.0.20"
+chrono = { version = "0.4.2", features = ["serde"] }
+curl = "0.4.12"
+postgres = "0.15.2"
