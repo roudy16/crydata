@@ -11,5 +11,5 @@ fn main() {
 
     let today = Utc::now().date();
 
-    e.fetch_history(Coin::BitCoin, today, today);
+    e.fetch_history(Coin::Bitcoin, today, today);
 }
