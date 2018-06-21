@@ -7,11 +7,12 @@ use std::io;
 use std::thread;
 use exchange_interactor::Coin;
 
-use gdax_client::PublicClient;
+use gdax_client::{PublicClient};
+use gdax_client::public::{Candle};
 
 pub fn calc_month_boundary_dates(&dt: &DateTime<Utc>) -> (DateTime<Utc>, DateTime<Utc>) {
     let cur_year = dt.year();
-    let cur_month = dt.month();
+    let cur_month = dt.month() - 1;
 
     let next_month = match cur_month {
         m if m == 12 => 1,
@@ -46,8 +47,13 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
     let (_, mut cur_end) = calc_month_boundary_dates(start);
     let mut cur_start: DateTime<Utc> = *start;
 
+    let mut candles: Vec<Candle> = Vec::new();
+
     loop {
         let (mut cur_start, mut cur_end) = calc_month_boundary_dates(&cur_end);
+        if cur_end > *end {
+            cur_end = *end;
+        }
 
         // TODO Create a file to write data to
 
@@ -62,11 +68,12 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
 
             let req_start_time = Utc::now();
 
-            let candles = client.get_historic_rates("BTC-USD", inner_start, inner_end, 60);
+            let mut chunk_of_candles = client.get_historic_rates("BTC-USD", inner_start, inner_end, 60).unwrap();
+            candles.append(&mut chunk_of_candles);
 
             let req_end_time = Utc::now();
 
-            let req_wait_until = req_start_time + Duration::milliseconds((SECS_PER_REQUEST * 1000.0).ceil() as i64);
+            let req_wait_until = req_start_time + Duration::milliseconds((SECS_PER_REQUEST * 2000.0).ceil() as i64);
             if req_wait_until > req_end_time {
                 let wait_amount: Duration = req_wait_until - req_end_time;
                 thread::sleep(wait_amount.to_std().unwrap());
@@ -77,17 +84,14 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
             }
 
             inner_start = inner_end;
-
         }
 
         if cur_end == *end {
             break;
         }
-
-        if cur_end > *end {
-            cur_end = *end;
-        }
     }
+
+    println!("{:?}", candles);
 
     return Ok(true);
 }
