@@ -12,7 +12,7 @@ use gdax_client::public::{Candle};
 
 pub fn calc_month_boundary_dates(&dt: &DateTime<Utc>) -> (DateTime<Utc>, DateTime<Utc>) {
     let cur_year = dt.year();
-    let cur_month = dt.month() - 1;
+    let cur_month = dt.month();
 
     let next_month = match cur_month {
         m if m == 12 => 1,
@@ -50,7 +50,6 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
     let mut candles: Vec<Candle> = Vec::new();
 
     loop {
-        let (mut cur_start, mut cur_end) = calc_month_boundary_dates(&cur_end);
         if cur_end > *end {
             cur_end = *end;
         }
@@ -89,9 +88,13 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
         if cur_end == *end {
             break;
         }
+
+        let (mut temp_start, mut temp_end) = calc_month_boundary_dates(&cur_end);
+        cur_start = temp_start;
+        cur_end = temp_end;
     }
 
-    println!("{:?}", candles);
+    println!("Num candles collected: {}", candles.len());
 
     return Ok(true);
 }
