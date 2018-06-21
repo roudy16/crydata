@@ -1,8 +1,10 @@
 use chrono::prelude::*;
 use chrono::{Duration, Datelike};
+use csv::{Writer};
 
 use std::error::Error;
 use std::path::Path;
+use std::fs::{File};
 use std::io;
 use std::thread;
 use exchange_interactor::Coin;
@@ -42,7 +44,11 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
     const SECS_PER_REQUEST: f64 = 1.0 / REQUESTS_PER_SEC;
     let three_hundred_minutes = Duration::minutes(300);
 
+    let file_name_test = make_history_file_name(coin, start.year(), start.month());
+    let mut f = File::open(file_name_test).unwrap();
+
     let mut client = PublicClient::new();
+    let mut csv_writer = Writer::from_writer(f);
 
     let (_, mut cur_end) = calc_month_boundary_dates(start);
     let mut cur_start: DateTime<Utc> = *start;
@@ -95,6 +101,8 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
     }
 
     println!("Num candles collected: {}", candles.len());
+    candles.iter().map(|c| { csv_writer.write_record(
+            &[c.open.to_string(), c.high.to_string(), c.low.to_string(), c.close.to_string()]); });
 
     return Ok(true);
 }

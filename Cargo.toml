@@ -8,5 +8,8 @@ serde = "1.0.66"
 serde_json = "1.0.20"
 chrono = { version = "0.4.2", features = ["serde"] }
 curl = "0.4.12"
-postgres = "0.15.2"
+csv = "1.0.0"
+
 gdax_client = { path = "gdax_client" , version = "1.1.0" }
+
+#postgres = "0.15.2"
