@@ -4,7 +4,7 @@ use csv::{Writer};
 
 use std::error::Error;
 use std::path::Path;
-use std::fs::{File};
+use std::fs::{File, OpenOptions, DirBuilder};
 use std::io;
 use std::thread;
 use exchange_interactor::Coin;
@@ -33,29 +33,36 @@ pub fn calc_month_boundary_dates(&dt: &DateTime<Utc>) -> (DateTime<Utc>, DateTim
     return (month_start_date, next_month_date);
 }
 
-pub fn make_history_file_name(coin: Coin, year: i32, month: u32) -> String {
+pub fn make_history_file_name(coin: &Coin, year: i32, month: u32) -> String {
     let year_month_str = Utc.ymd(year, month, 1).format("%Y%m").to_string();
     return format!("{}_{}", coin.to_string(), year_month_str);
 }
 
-pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
+pub fn collect_history_to_dir(coin: &Coin, product_str: &str, start: &DateTime<Utc>,
                               end: &DateTime<Utc>, dir_path: &Path) -> Result<bool, String> {
     const REQUESTS_PER_SEC: f64 = 3.0;
     const SECS_PER_REQUEST: f64 = 1.0 / REQUESTS_PER_SEC;
     let three_hundred_minutes = Duration::minutes(300);
 
-    let file_name_test = make_history_file_name(coin, start.year(), start.month());
-    let mut f = File::open(file_name_test).unwrap();
+    DirBuilder::new()
+        .recursive(true)
+        .create(dir_path).unwrap();
 
     let mut client = PublicClient::new();
-    let mut csv_writer = Writer::from_writer(f);
 
     let (_, mut cur_end) = calc_month_boundary_dates(start);
     let mut cur_start: DateTime<Utc> = *start;
 
-    let mut candles: Vec<Candle> = Vec::new();
 
     loop {
+        let file_name= format!("{}.csv", make_history_file_name(&coin, start.year(), start.month()));
+        let file_path_str = format!("{}/{}", dir_path.to_str().unwrap(), file_name);
+        let file_path = Path::new(&file_path_str);
+        let mut f = OpenOptions::new().write(true).create(true).open(file_path).unwrap();
+        let mut csv_writer = Writer::from_writer(f);
+
+        let mut candles: Vec<Candle> = Vec::new();
+
         if cur_end > *end {
             cur_end = *end;
         }
@@ -73,8 +80,14 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
 
             let req_start_time = Utc::now();
 
-            let mut chunk_of_candles = client.get_historic_rates("BTC-USD", inner_start, inner_end, 60).unwrap();
-            candles.append(&mut chunk_of_candles);
+            let mut chunk_of_candles = match client.get_historic_rates(product_str, inner_start, inner_end, 60) {
+                Ok(val) => Some(val),
+                Err(e) => None,
+            };
+
+            if chunk_of_candles.is_some() {
+                candles.append(&mut chunk_of_candles.unwrap());
+            }
 
             let req_end_time = Utc::now();
 
@@ -91,6 +104,21 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
             inner_start = inner_end;
         }
 
+        csv_writer.write_record(&["time", "low", "high", "open", "close", "volume"]).unwrap();
+
+        for c in &candles {
+            csv_writer.write_record(
+                &[
+                    c.time.to_string(),
+                    c.low.to_string(),
+                    c.high.to_string(),
+                    c.open.to_string(),
+                    c.close.to_string(),
+                    c.volume.to_string()]).unwrap();
+        }
+
+        csv_writer.flush().unwrap();
+
         if cur_end == *end {
             break;
         }
@@ -100,9 +128,6 @@ pub fn collect_history_to_dir(coin: Coin, start: &DateTime<Utc>,
         cur_end = temp_end;
     }
 
-    println!("Num candles collected: {}", candles.len());
-    candles.iter().map(|c| { csv_writer.write_record(
-            &[c.open.to_string(), c.high.to_string(), c.low.to_string(), c.close.to_string()]); });
 
     return Ok(true);
 }

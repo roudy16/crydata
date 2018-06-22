@@ -7,25 +7,28 @@ use crydataget::storage_utils::*;
 
 use std::io;
 use std::path::Path;
+use std::env;
 
 fn main() {
-    let e = ExchangeInteractor {
-        host: String::from("http://"),
-    };
+    let args: Vec<String> = env::args().collect();
+    let start_str = format!("{}T00:00:00Z", &args[1]);
+    let end_str = format!("{}T00:00:00Z", &args[2]);
 
-    let today = Utc::now();
+    println!("start: {}, end: {}", start_str, end_str);
 
-    e.fetch_history(Coin::Bitcoin, today, today);
-
-    let boundaries = calc_month_boundary_dates(&today);
-    println!("{:?}", boundaries);
-
-    let file_name_test = make_history_file_name(Coin::Bitcoin, 2017, 4);
-    println!("{}", file_name_test);
+    let start: DateTime<Utc> = start_str.parse::<DateTime<Utc>>().unwrap();
+    let end: DateTime<Utc> = end_str.parse::<DateTime<Utc>>().unwrap();
 
     let dir = Path::new("./data_dump/");
-    let start = chrono::Utc.ymd(2017, 6, 10).and_hms(0, 0, 0);
-    let end = chrono::Utc.ymd(2017, 6, 11).and_hms(12, 0, 0);
 
-    collect_history_to_dir(Coin::Bitcoin, &start, &end, &dir);
+    let coins_to_collect = [
+        (Coin::Bitcoin, "BTC-USD"),
+        (Coin::BitcoinCash, "BHC-USD"),
+        (Coin::Ether, "ETH-USD"),
+        (Coin::Litecoin, "LTC-USD"),
+    ];
+
+    for coin_prod_pair in &coins_to_collect {
+        collect_history_to_dir(&coin_prod_pair.0, &coin_prod_pair.1, &start, &end, &dir);
+    }
 }

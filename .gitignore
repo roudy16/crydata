@@ -3,6 +3,7 @@
 *.swp
 *.swo
 
+/data_dump
 /target
 **/*.rs.bk
 .idea/
