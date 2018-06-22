@@ -55,7 +55,7 @@ pub fn collect_history_to_dir(coin: &Coin, product_str: &str, start: &DateTime<U
 
 
     loop {
-        let file_name= format!("{}.csv", make_history_file_name(&coin, start.year(), start.month()));
+        let file_name= format!("{}.csv", make_history_file_name(&coin, cur_start.year(), cur_start.month()));
         let file_path_str = format!("{}/{}", dir_path.to_str().unwrap(), file_name);
         let file_path = Path::new(&file_path_str);
         let mut f = OpenOptions::new().write(true).create(true).open(file_path).unwrap();
